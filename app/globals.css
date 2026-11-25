@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 215 28% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 15%;
+    --primary: 214 65% 22%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 95%;
+    --secondary-foreground: 214 65% 22%;
+    --muted: 210 40% 95%;
+    --muted-foreground: 215 16% 45%;
+    --accent: 210 40% 94%;
+    --accent-foreground: 214 65% 22%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 25% 88%;
+    --input: 214 25% 85%;
+    --ring: 214 65% 30%;
+    --chart-1: 214 65% 40%;
+    --chart-2: 172 55% 40%;
+    --chart-3: 38 90% 50%;
+    --chart-4: 12 70% 50%;
+    --chart-5: 260 45% 55%;
+    --radius: 0.5rem;
+    --sidebar: 215 40% 13%;
+    --sidebar-foreground: 214 30% 85%;
+    --sidebar-accent: 214 45% 20%;
+    --sidebar-border: 214 35% 22%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+/* Print layout for the official honorarium form */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-form,
+  .print-form * {
+    visibility: visible;
+  }
+  .print-form {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}
