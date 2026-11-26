@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     let query = service
       .from('faculty_profiles')
-      .select('*, departments (name, code), user_id, faculty_documents (id, doc_type, status, remarks)')
+      .select('*, departments (name, code), user_id, faculty_documents (id, doc_type, file_name, mime_type, file_size, status, remarks, created_at)')
       .order('created_at', { ascending: false });
     if (status) query = query.eq('application_status', status);
     if (ctx.roles.includes('coordinator') && !ctx.roles.includes('super_admin') && ctx.departmentIds.length > 0) {

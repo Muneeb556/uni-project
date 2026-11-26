@@ -102,7 +102,7 @@ export async function PUT(req: NextRequest) {
     }
 
     await audit(ctx, 'document.review', 'faculty_documents', parsed.data.document_id, { status: doc.status }, { status: parsed.data.action }, parsed.data.remarks);
-    await notify(fp.user_id, `Document ${parsed.data.action}`, parsed.data.remarks || `Your ${doc.doc_type} is now ${parsed.data.action}.`, 'Documents', '/faculty/documents');
+    await notify(fp.user_id, `Document ${parsed.data.action}`, parsed.data.remarks || `Your ${doc.doc_type} is now ${parsed.data.action}.`, 'Documents', '/faculty/profile');
     return json({ ok: true });
   } catch (err) {
     return handleApiError(err);

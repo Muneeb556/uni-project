@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PageHeader, StatusBadge, LoadingBlock, ErrorState } from '@/components/dashboard-widgets';
-import { Upload, Trash2, Eye, FileWarning } from 'lucide-react';
+import { Upload, Trash2, Eye, FileWarning, ExternalLink } from 'lucide-react';
 
 interface Doc {
   id: string;
@@ -48,6 +49,7 @@ export default function FacultyProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [docType, setDocType] = useState<string>('CNIC');
+  const [previewDoc, setPreviewDoc] = useState<{ file_name: string; mime_type: string | null; url: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({ phone: '', cnic: '', designation: '', grade: '', qualification: '', bank_account_number: '', bank_name: '', university_branch: '' });
 
@@ -142,10 +144,18 @@ export default function FacultyProfilePage() {
   };
 
   const viewDoc = async (id: string) => {
+    setUploadError('');
     const res = await authFetch(token, `/api/documents/view?id=${id}`);
     const body = await res.json();
-    if (res.ok && body.url) window.open(body.url, '_blank');
-    else setUploadError(body?.error?.message || 'Could not open document');
+    if (res.ok && body.url) {
+      setPreviewDoc({
+        file_name: body.file_name || 'Document',
+        mime_type: body.mime_type || null,
+        url: body.url,
+      });
+    } else {
+      setUploadError(body?.error?.message || 'Could not open document');
+    }
   };
 
   const removeDoc = async (id: string) => {
@@ -188,28 +198,34 @@ export default function FacultyProfilePage() {
           <CardTitle className="text-base">Documents</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 rounded-md border bg-muted/30 p-4 sm:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label>Document type</Label>
-              <Select value={docType} onValueChange={setDocType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DOC_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {profile && ['Approved', 'Rejected'].includes(profile.application_status) ? (
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              Your application is finalized ({profile.application_status}); documents are locked. Contact the registrar to request updates.
             </div>
-            <div className="space-y-1.5">
-              <Label>File (PDF, JPG, PNG — max 5 MB)</Label>
-              <Input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" />
+          ) : (
+            <div className="grid gap-3 rounded-md border bg-muted/30 p-4 sm:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label>Document type</Label>
+                <Select value={docType} onValueChange={setDocType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DOC_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>File (PDF, JPG, PNG — max 5 MB)</Label>
+                <Input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={upload} disabled={uploading} className="gap-2">
+                  <Upload className="h-4 w-4" /> {uploading ? 'Uploading…' : 'Upload'}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-end">
-              <Button onClick={upload} disabled={uploading} className="gap-2">
-                <Upload className="h-4 w-4" /> {uploading ? 'Uploading…' : 'Upload'}
-              </Button>
-            </div>
-          </div>
+          )}
           {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
 
           <div className="overflow-x-auto rounded-md border">
@@ -241,7 +257,9 @@ export default function FacultyProfilePage() {
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => viewDoc(d.id)} title="View"><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => removeDoc(d.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        {!['Approved', 'Rejected'].includes(profile?.application_status || '') && (
+                          <Button variant="ghost" size="icon" onClick={() => removeDoc(d.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -251,6 +269,37 @@ export default function FacultyProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(previewDoc)} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+              <span className="truncate">{previewDoc?.file_name}</span>
+              {previewDoc?.url && (
+                <a
+                  href={previewDoc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={previewDoc.file_name}
+                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <ExternalLink className="h-3 w-3" /> Open / Download
+                </a>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {previewDoc && (
+            <div className="mt-2 rounded-lg border bg-slate-50 p-2 flex items-center justify-center min-h-[420px]">
+              {previewDoc.mime_type === 'application/pdf' || previewDoc.url.startsWith('data:application/pdf') ? (
+                <iframe src={previewDoc.url} title={previewDoc.file_name} className="h-[460px] w-full rounded border bg-white" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={previewDoc.url} alt={previewDoc.file_name} className="max-h-[460px] max-w-full rounded object-contain" />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -48,8 +48,12 @@ export async function GET(req: NextRequest) {
       if (!profile) return json({ role: 'faculty', profile: null, semester, stats: {}, notifications: [] });
 
       const [assignments, attendance, corrections, bills, payments, notifications] = await Promise.all([
-        service.from('faculty_assignments').select('id, classification, number_of_periods, status, courses (title, code), semesters (name)').eq('faculty_id', profile.id).eq('semester_id', semester?.id || '').neq('status', 'Cancelled'),
-        service.from('attendance_records').select('status, number_of_periods').eq('faculty_id', profile.id).eq('semester_id', semester?.id || ''),
+        semester?.id
+          ? service.from('faculty_assignments').select('id, classification, number_of_periods, status, courses (title, code), semesters (name)').eq('faculty_id', profile.id).eq('semester_id', semester.id).neq('status', 'Cancelled')
+          : Promise.resolve({ data: [] as any[], error: null }),
+        semester?.id
+          ? service.from('attendance_records').select('status, number_of_periods').eq('faculty_id', profile.id).eq('semester_id', semester.id)
+          : Promise.resolve({ data: [] as any[], error: null }),
         service.from('attendance_correction_requests').select('id, status').eq('faculty_id', profile.id).eq('status', 'Pending'),
         service.from('semester_bills').select('id, status, grand_total, bill_number, semesters (name)').eq('faculty_id', profile.id).order('updated_at', { ascending: false }).limit(5),
         service.from('payments').select('id, paid_amount, payment_date, status').eq('faculty_id', profile.id).order('payment_date', { ascending: false }).limit(5),

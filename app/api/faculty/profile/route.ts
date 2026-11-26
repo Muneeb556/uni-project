@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireAuth, json, errorResponse, handleApiError, getFacultyProfile, audit, type AuthContext } from '@/lib/api-helpers';
 import type { NextResponse } from 'next/server';
+import { getServiceClient } from '@/lib/supabase-server';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -29,7 +30,8 @@ export async function PUT(req: NextRequest) {
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) return errorResponse(parsed.error.issues[0]?.message || 'Invalid profile details');
 
-    const { data, error } = await ctx.client
+    const service = getServiceClient();
+    const { data, error } = await service
       .from('faculty_profiles')
       .update({ ...parsed.data, updated_at: new Date().toISOString() })
       .eq('id', profile.id)

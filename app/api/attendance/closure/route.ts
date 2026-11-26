@@ -19,16 +19,21 @@ export async function GET(req: NextRequest) {
     if (isStaff(ctx)) {
       let q = service
         .from('semester_attendance_closures')
-        .select('*, faculty_profiles (full_name, user_id), semesters (name)')
-        .order('created_at', { ascending: false });
-      if (semesterId) q = q.eq('semester_id', semesterId);
-      const { data } = await q;
+        .select('*, faculty_profiles (full_name, user_id), semesters (name)');
+      if (semesterId) {
+        q = (q as any).eq('semester_id', semesterId);
+      }
+      const { data } = await (q as any).order('created_at', { ascending: false });
       return json(data || []);
     }
     const profile = await getFacultyProfile(ctx);
     if (!profile) return json(null);
     let q = ctx.client.from('semester_attendance_closures').select('*').eq('faculty_id', profile.id);
-    if (semesterId) q = q.eq('semester_id', semesterId);
+    if (semesterId) {
+      q = q.eq('semester_id', semesterId);
+    } else {
+      q = q.order('created_at', { ascending: false }).limit(1);
+    }
     const { data } = await q.maybeSingle();
     return json(data);
   } catch (err) {

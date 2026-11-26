@@ -1,58 +1,12 @@
 import { NextRequest } from 'next/server';
-import { requireAuth, json, errorResponse, handleApiError, getFacultyProfile, audit, notify, isStaff, type AuthContext } from '@/lib/api-helpers';
+import { randomBytes } from 'crypto';
+import { requireAuth, json, errorResponse, handleApiError, getFacultyProfile, audit, type AuthContext } from '@/lib/api-helpers';
 import type { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase-server';
 import { z } from 'zod';
 
 function isResponse(v: AuthContext | NextResponse): v is NextResponse {
   return (v as NextResponse).status !== undefined;
-}
-
-// GET /api/bills?id=... or list; faculty own, staff all (with filters)
-export async function GET(req: NextRequest) {
-  try {
-    const ctx = await requireAuth(req);
-    if (isResponse(ctx)) return ctx;
-    const service = getServiceClient();
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const status = searchParams.get('status');
-    const semesterId = searchParams.get('semester_id');
-
-    if (id) {
-      const { data: bill } = await service
-        .from('semester_bills')
-        .select('*, faculty_profiles (id, user_id, full_name, designation, grade, department_id, cnic, bank_account_number, bank_name, university_branch, departments (name, code)), semesters (id, name, billing_deadline), bill_items (*), bill_approvals (*, users:bill_approvals (actor_role)), physical_bill_receipts (*), payments (*)')
-        .eq('id', id)
-        .maybeSingle();
-      if (!bill) return errorResponse('Bill not found', 404, 'not_found');
-      const fp = bill.faculty_profiles as { user_id: string; department_id: string | null };
-      const owns = fp.user_id === ctx.userId;
-      const staff = isStaff(ctx);
-      const coordinatorSameDept = ctx.roles.includes('coordinator') && fp.department_id && ctx.departmentIds.includes(fp.department_id);
-      if (!owns && !staff && !coordinatorSameDept) return errorResponse('You do not have access to this bill', 403, 'forbidden');
-      return json(bill);
-    }
-
-    let query = service
-      .from('semester_bills')
-      .select('*, faculty_profiles (id, user_id, full_name, departments (name, code)), semesters (id, name, billing_deadline)')
-      .order('updated_at', { ascending: false });
-    if (!isStaff(ctx)) {
-      const { data: prof } = await service.from('faculty_profiles').select('id').eq('user_id', ctx.userId).maybeSingle();
-      if (!prof) return json([]);
-      query = query.eq('faculty_id', prof.id);
-    } else if (ctx.roles.includes('coordinator') && !ctx.roles.includes('super_admin') && ctx.departmentIds.length > 0) {
-      query = query.in('faculty_profiles.department_id', ctx.departmentIds);
-    }
-    if (status) query = query.eq('status', status);
-    if (semesterId) query = query.eq('semester_id', semesterId);
-    const { data, error } = await query;
-    if (error) return errorResponse(error.message, 500, 'query_failed');
-    return json(data || []);
-  } catch (err) {
-    return handleApiError(err);
-  }
 }
 
 // POST /api/bills/generate — build a draft bill from approved attendance only
@@ -164,16 +118,28 @@ export async function POST(req: NextRequest) {
     };
 
     let billId: string;
+    let trackingId: string;
     if (existing) {
-      const { error: updError } = await service.from('semester_bills').update({ ...billValues, updated_at: new Date().toISOString() }).eq('id', existing.id);
+      const { data: existingFull } = await service
+        .from('semester_bills')
+        .select('bill_number')
+        .eq('id', existing.id)
+        .maybeSingle();
+      trackingId =
+        existingFull?.bill_number ||
+        `TRK-${semester.name.replace(/\s+/g, '').toUpperCase()}-${profile.id.slice(0, 6).toUpperCase()}-${randomBytes(2).toString('hex').toUpperCase()}`;
+      const { error: updError } = await service
+        .from('semester_bills')
+        .update({ ...billValues, bill_number: trackingId, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
       if (updError) return errorResponse(updError.message, 500, 'update_failed');
       billId = existing.id;
       await service.from('bill_items').delete().eq('bill_id', billId);
     } else {
-      const billNumber = `TH-${semester.name.replace(/\s+/g, '').toUpperCase()}-${profile.id.slice(0, 8).toUpperCase()}`;
+      trackingId = `TRK-${semester.name.replace(/\s+/g, '').toUpperCase()}-${profile.id.slice(0, 6).toUpperCase()}-${randomBytes(2).toString('hex').toUpperCase()}`;
       const { data: created, error: insError } = await service
         .from('semester_bills')
-        .insert({ ...billValues, bill_number: billNumber })
+        .insert({ ...billValues, bill_number: trackingId })
         .select('*')
         .single();
       if (insError) return errorResponse(insError.message, 500, 'insert_failed');
@@ -185,8 +151,8 @@ export async function POST(req: NextRequest) {
       const { error: itemError } = await service.from('bill_items').insert(rows);
       if (itemError) return errorResponse(itemError.message, 500, 'items_failed');
     }
-    await audit(ctx, 'bill.generate', 'semester_bills', billId, existing || null, billValues);
-    return json({ id: billId, ...billValues });
+    await audit(ctx, 'bill.generate', 'semester_bills', billId, existing || null, { ...billValues, bill_number: trackingId });
+    return json({ id: billId, bill_number: trackingId, tracking_id: trackingId, ...billValues });
   } catch (err) {
     return handleApiError(err);
   }

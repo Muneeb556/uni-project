@@ -91,5 +91,31 @@ export function authFetch(
   const headers = new Headers(init?.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (init?.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  return fetch(input, { ...init, headers });
+  return fetch(input, { ...init, headers }).then((res) => {
+    // Intercept res.json to prevent "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+    res.json = async () => {
+      const clone = res.clone();
+      const text = await clone.text();
+      const isHtml = text.trimStart().startsWith('<');
+      if (isHtml) {
+        if (!res.ok) {
+          throw new Error(
+            res.status === 404
+              ? `API endpoint not found (404): ${input}`
+              : `Server error (${res.status}): Please check backend service`
+          );
+        }
+        throw new Error('The server returned an HTML page instead of JSON');
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`);
+        }
+        throw e;
+      }
+    };
+    return res;
+  });
 }

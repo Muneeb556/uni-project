@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getServiceClient } from '@/lib/supabase-server';
+import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase-server';
 import { json, errorResponse, handleApiError } from '@/lib/api-helpers';
 import { DEMO_ACCOUNTS } from '@/lib/demo-constants';
 import { signDemoToken } from '@/lib/demo-tokens';
@@ -47,12 +47,39 @@ export async function POST(req: NextRequest) {
     try {
       const service = getServiceClient();
       const { data, error } = await service.auth.signInWithPassword({ email, password });
-      if (error || !data.session) return errorResponse('Invalid email or password', 401, 'invalid_credentials');
+      if (error || !data.session || !data.user) return errorResponse('Invalid email or password', 401, 'invalid_credentials');
+
+      const { data: roleRows } = await service
+        .from('user_roles')
+        .select('role, department_id')
+        .eq('user_id', data.user.id);
+      const roles = (roleRows || []).map((r: { role: string }) => r.role);
+      const departmentIds = Array.from(
+        new Set((roleRows || []).map((r: { department_id: string | null }) => r.department_id).filter((d): d is string => Boolean(d)))
+      );
+
+      if (!isSupabaseConfigured()) {
+        const token = signDemoToken({
+          sub: data.user.id,
+          email: data.user.email || email,
+          roles: roles.length > 0 ? roles : ['faculty'],
+          department_ids: departmentIds,
+        });
+        return json({
+          access_token: token,
+          refresh_token: token,
+          expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 12,
+          user: { id: data.user.id, email: data.user.email || email },
+          roles: roles.length > 0 ? roles : ['faculty'],
+        });
+      }
+
       return json({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
         expires_at: data.session.expires_at,
         user: { id: data.user.id, email: data.user.email },
+        roles,
       });
     } catch {
       return errorResponse('Only the demonstration accounts can sign in in this environment', 401, 'invalid_credentials');

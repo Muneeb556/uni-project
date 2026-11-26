@@ -31,7 +31,7 @@ interface BillDetail {
   semesters: { name: string; start_date: string; end_date: string } | null;
   bill_items: Array<{
     id: string; item_type: string; course_number: string | null; number_of_students: number | null;
-    serial_number: number | null; entry_date: string | null; timings: string | null; number_of_periods: number;
+    serial_number: number | null; entry_date: string | null; timings: string | null; number_of_periods: number; rate?: number | null;
   }>;
 }
 
@@ -96,9 +96,9 @@ export default function HonorariumFormPage() {
   const theoryCell = (items: typeof theoryItems, count: number, offset: number) => (
     <tbody>
       {Array.from({ length: count }).map((_, i) => {
-        const item = items[i - offset];
-        if (!item) return emptyRow(i + 1);
-        return filledRow(item, i - offset);
+        const item = items[i];
+        if (!item) return emptyRow(offset + i + 1);
+        return filledRow(item, offset + i);
       })}
     </tbody>
   );
@@ -134,7 +134,7 @@ export default function HonorariumFormPage() {
           <p><span className="font-semibold">Grade:</span> {fp?.grade || ''}</p>
           <p><span className="font-semibold">Department:</span> {fp?.departments?.name || ''}</p>
           <p><span className="font-semibold">CNIC:</span> {fp?.cnic || ''}</p>
-          <p><span className="font-semibold">Email:</span> {fp ? '' : ''}</p>
+          <p><span className="font-semibold">Email:</span> {session?.user?.email || ''}</p>
           <p><span className="font-semibold">Bank Account No.:</span> {fp?.bank_account_number || ''}</p>
           <p><span className="font-semibold">Bank Name:</span> {fp?.bank_name || ''}</p>
           <p><span className="font-semibold">University Branch:</span> {fp?.university_branch || ''}</p>
@@ -142,7 +142,7 @@ export default function HonorariumFormPage() {
             <span className="font-semibold">Bill Period:</span>{' '}
             {bill.semesters ? `${bill.semesters.name} (${formatDate(bill.semesters.start_date)} – ${formatDate(bill.semesters.end_date)})` : ''}
           </p>
-          <p className="col-span-2"><span className="font-semibold">Bill No.:</span> {bill.bill_number || ''}</p>
+          <p className="col-span-2"><span className="font-semibold">Tracking ID / Bill No.:</span> <span className="font-mono font-semibold">{bill.bill_number || bill.id.slice(0, 8).toUpperCase()}</span></p>
         </div>
 
         <p className="mt-4 border border-gray-600 bg-gray-100 px-2 py-1 text-center text-xs font-bold uppercase">Theory</p>
@@ -191,7 +191,7 @@ export default function HonorariumFormPage() {
                 <td className="border-r px-1 py-[3px]">{i.entry_date ? formatDate(i.entry_date) : ''}</td>
                 <td className="border-r px-1 py-[3px]">{i.timings || ''}</td>
                 <td className="border-r px-1 py-[3px] text-center">{i.number_of_periods || ''}</td>
-                <td className="px-1 py-[3px] text-center">{formatPKR(i.number_of_periods)}</td>
+                <td className="px-1 py-[3px] text-center">{formatPKR(i.rate ?? bill.practical_rate)}</td>
               </tr>
             ))}
           </tbody>

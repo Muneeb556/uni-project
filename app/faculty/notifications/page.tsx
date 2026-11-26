@@ -6,6 +6,7 @@ import { authFetch, formatDateTime } from '@/lib/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageHeader, LoadingBlock, ErrorState, EmptyState } from '@/components/dashboard-widgets';
+import Link from 'next/link';
 import { Bell } from 'lucide-react';
 
 interface Notification {
@@ -14,7 +15,8 @@ interface Notification {
   body: string | null;
   category: string;
   link: string | null;
-  read: boolean;
+  read?: boolean;
+  is_read?: boolean;
   created_at: string;
 }
 
@@ -57,15 +59,17 @@ export default function FacultyNotificationsPage() {
         title="Notifications"
         description="Application, attendance, billing and payment updates."
         actions={
-          <Button variant="outline" onClick={markAll} disabled={rows.every((r) => r.read)}>Mark all read</Button>
+          <Button variant="outline" onClick={markAll} disabled={rows.every((r) => Boolean(r.read ?? r.is_read))}>Mark all read</Button>
         }
       />
       {rows.length === 0 ? (
         <EmptyState title="No notifications" />
       ) : (
         <div className="space-y-2">
-          {rows.map((n) => (
-            <Card key={n.id} className={n.read ? 'opacity-70' : 'border-l-4 border-l-primary'}>
+          {rows.map((n) => {
+            const isRead = Boolean(n.read ?? n.is_read);
+            return (
+            <Card key={n.id} className={isRead ? 'opacity-70' : 'border-l-4 border-l-primary'}>
               <CardContent className="flex items-start justify-between gap-3 py-3">
                 <div>
                   <p className="flex items-center gap-2 text-sm font-medium">
@@ -73,9 +77,16 @@ export default function FacultyNotificationsPage() {
                     <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">{n.category}</span>
                   </p>
                   {n.body && <p className="mt-0.5 text-sm text-muted-foreground">{n.body}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(n.created_at)}</p>
+                  <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{formatDateTime(n.created_at)}</span>
+                    {n.link && (
+                      <Link href={n.link} className="font-medium text-primary hover:underline">
+                        Open →
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                {!n.read && (
+                {!isRead && (
                   <Button variant="ghost" size="sm" onClick={async () => {
                     await authFetch(token, '/api/notifications', { method: 'PATCH', body: JSON.stringify({ ids: [n.id] }) });
                     await load();
@@ -83,7 +94,8 @@ export default function FacultyNotificationsPage() {
                 )}
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

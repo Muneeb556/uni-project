@@ -1,35 +1,32 @@
 import { NextRequest } from 'next/server';
 import { getServiceClient } from '@/lib/supabase-server';
-import { json, errorResponse, handleApiError } from '@/lib/api-helpers';
+import { requireAuth, isStaff, json, errorResponse, handleApiError, type AuthContext } from '@/lib/api-helpers';
+import type { NextResponse } from 'next/server';
+
+function isResponse(v: AuthContext | NextResponse): v is NextResponse {
+  return (v as NextResponse).status !== undefined;
+}
 
 // Serves a faculty document through an authenticated, short-lived signed URL.
 // Access check: the requester must be the owner or a staff member.
 export async function GET(req: NextRequest) {
   try {
+    const ctx = await requireAuth(req);
+    if (isResponse(ctx)) return ctx;
+
     const { searchParams } = new URL(req.url);
     const docId = searchParams.get('id');
     if (!docId) return errorResponse('Document id is required');
 
-    const authHeader = req.headers.get('authorization') || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
-    if (!token) return errorResponse('Authentication required', 401, 'unauthorized');
-
     const service = getServiceClient();
-    const { data: userData, error: userError } = await service.auth.getUser(token);
-    if (userError || !userData?.user) return errorResponse('Authentication required', 401, 'unauthorized');
-
-    const { data: roles } = await service.from('user_roles').select('role').eq('user_id', userData.user.id);
-    const roleList = (roles || []).map((r) => r.role);
-    const isStaffUser = roleList.some((r) => r !== 'faculty');
-
     const { data: doc } = await service.from('faculty_documents').select('*').eq('id', docId).maybeSingle();
     if (!doc) return errorResponse('Document not found', 404, 'not_found');
 
-    if (!isStaffUser) {
+    if (!isStaff(ctx)) {
       const { data: prof } = await service
         .from('faculty_profiles')
         .select('id')
-        .eq('user_id', userData.user.id)
+        .eq('user_id', ctx.userId)
         .eq('id', doc.faculty_id)
         .maybeSingle();
       if (!prof) return errorResponse('You do not have access to this document', 403, 'forbidden');

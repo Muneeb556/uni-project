@@ -8,7 +8,7 @@ import { homeRouteFor, ROLE_LABELS } from '@/lib/roles';
 import {
   LayoutDashboard, GraduationCap, FileText, CalendarCheck, ClipboardList,
   Users, Building2, BookOpen, CalendarRange, Settings, Bell, LogOut,
-  Landmark, BadgeCheck, BarChart3, Menu, ChevronLeft,
+  Landmark, BadgeCheck, BarChart3, Menu, Sparkles, ChevronRight, Route,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,10 @@ export const FACULTY_NAV: NavItem[] = [
   { href: '/faculty', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/faculty/profile', label: 'Profile & Documents', icon: GraduationCap },
   { href: '/faculty/timetable', label: 'My Timetable', icon: CalendarRange },
-  { href: '/faculty/attendance', label: 'Attendance', icon: CalendarCheck },
+  { href: '/faculty/attendance', label: 'Attendance Log', icon: CalendarCheck },
   { href: '/faculty/courses', label: 'My Courses', icon: BookOpen },
   { href: '/faculty/bills', label: 'Honorarium Bills', icon: FileText },
+  { href: '/faculty/track', label: 'Track Bill', icon: Route },
   { href: '/faculty/payments', label: 'Payment History', icon: Landmark },
   { href: '/faculty/notifications', label: 'Notifications', icon: Bell },
 ];
@@ -81,33 +82,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-pulse text-sm text-muted-foreground">Loading your workspace…</div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-900">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 animate-pulse">
+            <GraduationCap className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-medium text-slate-300">Loading your workspace…</p>
+        </div>
       </div>
     );
   }
 
   const nav = useNavFor(roles);
   const home = homeRouteFor(roles);
+  const userInitials = (profile?.full_name || session.user.email || 'U')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join('');
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-slate-50/70 overflow-x-hidden">
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center gap-2.5 border-b border-[hsl(var(--sidebar-border))] px-5 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/10">
+        {/* Brand Header */}
+        <div className="flex items-center gap-3 border-b border-slate-800/80 px-5 py-5 bg-slate-950/40">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-md shadow-teal-500/20">
             <GraduationCap className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <p className="text-sm font-semibold leading-tight text-white">Teaching Honorarium</p>
-            <p className="text-xs text-[hsl(var(--sidebar-foreground))]">University of Karachi</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold tracking-tight text-white truncate">University of Karachi</p>
+            <p className="text-[11px] font-medium text-teal-400 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-400 inline-block" />
+              Teaching Honorarium
+            </p>
           </div>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3.5 py-4">
+          <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            Main Navigation
+          </div>
           {nav.map((item) => {
             const active = pathname === item.href || (item.href !== home && pathname.startsWith(item.href));
             return (
@@ -116,49 +137,87 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all duration-150',
                   active
-                    ? 'bg-[hsl(var(--sidebar-accent))] text-white'
-                    : 'text-[hsl(var(--sidebar-foreground))] hover:bg-white/5 hover:text-white'
+                    ? 'bg-gradient-to-r from-teal-500/20 to-teal-500/5 text-teal-300 border border-teal-500/30 shadow-sm'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
                 )}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-teal-400 shadow-sm shadow-teal-400" />
+                )}
+                <item.icon className={cn('h-4 w-4 transition-transform group-hover:scale-110', active ? 'text-teal-400' : 'text-slate-400')} />
+                <span className="flex-1 truncate">{item.label}</span>
+                {active && <ChevronRight className="h-3 w-3 text-teal-400/70" />}
               </Link>
             );
           })}
         </nav>
-        <div className="border-t border-[hsl(var(--sidebar-border))] px-4 py-4">
-          <p className="truncate text-sm font-medium text-white">{profile?.full_name || session.user.email}</p>
-          <p className="truncate text-xs text-[hsl(var(--sidebar-foreground))]">
-            {ROLE_LABELS[roles[0]] || roles[0] || 'User'}
-          </p>
+
+        {/* User Card & Sign Out */}
+        <div className="border-t border-slate-800/90 bg-slate-950/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-teal-300 font-bold text-xs border border-slate-700 shadow-inner">
+              {userInitials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-white">{profile?.full_name || session.user.email}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="truncate text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+                  {ROLE_LABELS[roles[0]] || roles[0] || 'User'}
+                </span>
+              </div>
+            </div>
+          </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="mt-2 w-full justify-start gap-2 text-[hsl(var(--sidebar-foreground))] hover:bg-white/5 hover:text-white"
+            className="mt-3 w-full justify-center gap-2 border-slate-800 bg-slate-900/80 text-xs text-slate-300 hover:border-slate-700 hover:bg-slate-800 hover:text-white"
             onClick={async () => {
               await signOut();
               router.replace('/');
             }}
           >
-            <LogOut className="h-4 w-4" /> Sign out
+            <LogOut className="h-3.5 w-3.5 text-slate-400" /> Sign out
           </Button>
         </div>
       </aside>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-white/95 px-4 backdrop-blur lg:hidden">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="text-sm font-semibold">Teaching Honorarium System</span>
+      {/* Main Workspace Area */}
+      <div className="flex min-w-0 flex-1 flex-col lg:ml-64">
+        {/* Top Header Bar for Context */}
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="lg:hidden text-slate-700" onClick={() => setMobileOpen(!mobileOpen)}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+              <span className="font-semibold text-slate-800">University of Karachi</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-teal-700 font-medium bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200/60 flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-teal-600" />
+                Fall 2026 Academic Session
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-xs text-slate-500 hover:text-slate-800 font-medium transition-colors">
+              Public Portal
+            </Link>
+            <div className="h-3.5 w-px bg-slate-200" />
+            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-sm">
+              Online Mode
+            </span>
+          </div>
         </header>
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+
+        <main className="flex-1 px-4 py-8 sm:px-8 lg:px-10 max-w-7xl w-full mx-auto">{children}</main>
       </div>
     </div>
   );

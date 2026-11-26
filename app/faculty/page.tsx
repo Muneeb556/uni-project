@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { authFetch, formatDate, formatPKR } from '@/lib/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader, StatCard, StatusBadge, LoadingBlock, ErrorState, EmptyState } from '@/components/dashboard-widgets';
-import { BookOpen, CalendarCheck, Clock, Bell, FileText, Landmark, AlertCircle, GraduationCap } from 'lucide-react';
+import { BookOpen, CalendarCheck, Clock, Bell, FileText, Landmark, AlertCircle, GraduationCap, Route } from 'lucide-react';
 
 interface FacultyDashboard {
   role: string;
@@ -111,7 +111,15 @@ export default function FacultyDashboardPage() {
                     <p className="font-medium">{b.bill_number || 'Honorarium bill'}</p>
                     <p className="text-xs text-muted-foreground">{b.semesters?.name} · {formatPKR(b.grand_total)}</p>
                   </div>
-                  <StatusBadge status={b.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={b.status} />
+                    <Link
+                      href={`/faculty/track?id=${encodeURIComponent(b.bill_number || b.id)}`}
+                      className="inline-flex items-center gap-1 rounded border border-teal-200 bg-teal-50 px-2 py-0.5 text-[11px] font-medium text-teal-700 hover:bg-teal-100"
+                    >
+                      <Route className="h-3 w-3" /> Track
+                    </Link>
+                  </div>
                 </div>
               ))
             )}

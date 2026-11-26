@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     }
     if (!semester) return json({ upcoming: [], history: [], semester: null });
 
-    const { data: assignments } = await ctx.client
+    const { data: assignments } = await service
       .from('faculty_assignments')
       .select('id, semester_id, course_id, number_of_students, classification, number_of_periods, start_time, end_time, status, courses (title, code), semesters (id, name)')
       .eq('faculty_id', profile.id)
@@ -51,13 +51,13 @@ export async function GET(req: NextRequest) {
     const assignmentIds = (assignments || []).map((a) => a.id);
     if (assignmentIds.length === 0) return json({ upcoming: [], history: [], semester });
 
-    const { data: schedules } = await ctx.client
+    const { data: schedules } = await service
       .from('schedules')
       .select('*')
       .in('assignment_id', assignmentIds)
       .eq('status', 'Active');
 
-    const { data: existing } = await ctx.client
+    const { data: existing } = await service
       .from('attendance_records')
       .select('id, assignment_id, scheduled_date, status, actual_date, start_time, end_time, number_of_periods, number_of_students, remarks')
       .in('assignment_id', assignmentIds)
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     }
     upcoming.sort((a, b) => String(b.scheduled_date).localeCompare(String(a.scheduled_date)));
 
-    const { data: history } = await ctx.client
+    const { data: history } = await service
       .from('attendance_records')
       .select('*, courses:faculty_assignments (courses (title, code))')
       .eq('faculty_id', profile.id)

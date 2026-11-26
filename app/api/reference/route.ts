@@ -26,8 +26,23 @@ export async function GET(req: NextRequest) {
         const { data } = await service.from('compensation_rules').select('*');
         return json(data || []);
       }
-      default:
+      default: {
+        if (!type) {
+          const [depts, courses, settings, compensation] = await Promise.all([
+            service.from('departments').select('*').order('name'),
+            service.from('courses').select('*').order('code'),
+            service.from('system_settings').select('*'),
+            service.from('compensation_rules').select('*'),
+          ]);
+          return json({
+            departments: depts.data || [],
+            courses: courses.data || [],
+            settings: settings.data || [],
+            compensation: compensation.data || [],
+          });
+        }
         return errorResponse('Unknown reference type');
+      }
     }
   } catch (err) {
     return handleApiError(err);
